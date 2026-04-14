@@ -50,7 +50,22 @@ def main():
     parser.add_argument("--port", type=str, default="/dev/ttyUSB_LEFT", help="Serial port to the motor driver")
     parser.add_argument("--rpm", type=int, default=1000, help="Target RPM to spin the motor")
     parser.add_argument("--baudrate", type=int, default=19200, help="Baudrate for Modbus communication")
+    parser.add_argument("--arduino-port", type=str, default=None, help="Serial port to the Arduino (e.g., COM3)")
+    parser.add_argument("--arduino-baudrate", type=int, default=9600, help="Baudrate for Arduino")
     args = parser.parse_args()
+
+    arduino_serial = None
+    if args.arduino_port:
+        try:
+            import serial
+            arduino_serial = serial.Serial(args.arduino_port, args.arduino_baudrate, timeout=0.1)
+            print(f"[SUCCESS] Connected to Arduino at {args.arduino_port}")
+        except ImportError:
+            print("[ERROR] Please install pyserial: pip install pyserial")
+            return
+        except Exception as e:
+            print(f"[ERROR] Failed to connect to Arduino at {args.arduino_port}: {e}")
+            return
 
     client = ModbusSerialClient(
         port=args.port,
@@ -96,12 +111,30 @@ def main():
     print("--------------------------------------------------")
 
     try:
-        write_speed(client, args.rpm)
+        current_rpm = args.rpm
+        write_speed(client, current_rpm)
         
         # Keep the script running to hold the motor command
-        # If the script exits, we wouldn't be able to catch the stop event cleanly
+        # Read from Arduino if available to control the motor based on distance
         while True:
-            time.sleep(1)
+            if arduino_serial and arduino_serial.in_waiting > 0:
+                try:
+                    line = arduino_serial.readline().decode('utf-8', errors='ignore').strip()
+                    if line:
+                        if "Object Detected" in line:
+                            if current_rpm != 0:
+                                print(f"[WARNING] Object detected! Stopping motor.")
+                                write_speed(client, 0)
+                                current_rpm = 0
+                        elif "No Problem" in line:
+                            if current_rpm != args.rpm:
+                                print(f"[INFO] Object removed. Restarting motor to {args.rpm} RPM.")
+                                write_speed(client, args.rpm)
+                                current_rpm = args.rpm
+                except Exception as e:
+                    print(f"[WARNING] Error reading from Arduino: {e}")
+            
+            time.sleep(0.01) # Small delay to prevent 100% CPU usage
 
     except KeyboardInterrupt:
         print("\n\n[WARNING] Halting command received (Ctrl+C). Stopping motor SAFELY...")

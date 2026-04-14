@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+.env/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment Variables
+.env
+.flaskenv
+
+# IDE Tools
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Arduino
+build/
+*_build/
+.arduinocdt/
+.cproject
+.project
+.settings/
+*.hex
+*.elf
+*.bin
+*.map
